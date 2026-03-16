@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace PriorityQueue
 {
-    public readonly struct PriorityKey : IComparable<PriorityKey>
+    internal struct PriorityKey : IComparable<PriorityKey>
     {
         public int Priority { get; }
         public long Sequence { get; }
@@ -33,9 +33,9 @@ namespace PriorityQueue
 
     public class InMemoryPriorityQueue<T> : IInMemoryPriorityQueue<T>//  where T : Message //
     {
-        private SemaphoreSlim _slim = new SemaphoreSlim(0, int.MaxValue);
-        private PriorityQueue<T, PriorityKey> _queue = new PriorityQueue<T, PriorityKey>();
-        private object _locker = new object();
+        private readonly SemaphoreSlim _slim = new SemaphoreSlim(0, int.MaxValue);
+        private readonly PriorityQueue<T, PriorityKey> _queue = new PriorityQueue<T, PriorityKey>();
+        private readonly object _locker = new object();
         private long sequence = 0;
 
         public int Count
