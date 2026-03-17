@@ -1,37 +1,19 @@
+using InMemoryPriorityQueue;
 using Microsoft.AspNetCore.Mvc;
 
 namespace PriorityQueue.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class WeatherForecastController : ControllerBase
+    public class QueueController : ControllerBase
     {
-        private static readonly string[] Summaries = new[]
-        {
-            "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-        };
-
-        private readonly ILogger<WeatherForecastController> _logger;
-        private readonly IHandler _handler;
+        private readonly ILogger<QueueController> _logger;
         private readonly IInMemoryPriorityQueue<Message> _queue;
 
-        public WeatherForecastController(ILogger<WeatherForecastController> logger, IHandler handler, IInMemoryPriorityQueue<Message> queue)
+        public QueueController(ILogger<QueueController> logger, IInMemoryPriorityQueue<Message> queue)
         {
             _logger = logger;
-            _handler = handler;
             _queue = queue;
-        }
-
-        [HttpGet(Name = "GetWeatherForecast")]
-        public IEnumerable<WeatherForecast> Get()
-        {
-            return Enumerable.Range(1, 5).Select(index => new WeatherForecast
-            {
-                Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                TemperatureC = Random.Shared.Next(-20, 55),
-                Summary = Summaries[Random.Shared.Next(Summaries.Length)]
-            })
-            .ToArray();
         }
 
         [HttpPost]
@@ -42,6 +24,7 @@ namespace PriorityQueue.Controllers
             var message = new Message() { Name = $"nameOfMessage {DateTime.UtcNow}" };
             var priority = rnd.Next(0, 255);
             _queue.Enqueue(message, priority);
+            _logger.LogInformation($"В очереди {_queue.Count} сообщения(й)");
             return Ok(message);
         }
 

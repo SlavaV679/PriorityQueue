@@ -1,4 +1,4 @@
-﻿namespace PriorityQueue
+﻿namespace InMemoryPriorityQueue
 {
     public interface IInMemoryPriorityQueue<T>
     {

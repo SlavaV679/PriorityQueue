@@ -1,37 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace PriorityQueue
+﻿namespace InMemoryPriorityQueue
 {
-    internal struct PriorityKey : IComparable<PriorityKey>
-    {
-        public int Priority { get; }
-        public long Sequence { get; }
-
-        private const int MAX_PRIORITY = 255;
-        private const int MIN_PRIORITY = 0;
-
-        public PriorityKey(int priority, long sequence)
-        {
-            if (priority < MIN_PRIORITY || priority > MAX_PRIORITY)
-                throw new ArgumentOutOfRangeException(nameof(priority), $"Not valid value of 'priority' = {priority}");
-
-            Priority = priority;
-            Sequence = sequence;
-        }
-
-        public int CompareTo(PriorityKey priorityKey)
-        {
-            var comparer = this.Priority.CompareTo(priorityKey.Priority);
-            if (comparer != 0)
-                return comparer;
-
-            return this.Sequence.CompareTo(priorityKey.Sequence);
-        }
-    }
-
-    public class InMemoryPriorityQueue<T> : IInMemoryPriorityQueue<T>//  where T : Message //
+    public class InMemoryPriorityQueue<T> : IInMemoryPriorityQueue<T>
     {
         private readonly SemaphoreSlim _slim = new SemaphoreSlim(0, int.MaxValue);
         private readonly PriorityQueue<T, PriorityKey> _queue = new PriorityQueue<T, PriorityKey>();
@@ -51,7 +20,6 @@ namespace PriorityQueue
 
         public async Task<T> DequeueAsync(CancellationToken cancellationToken = default)
         {
-            // queue.Enqueue(new Message() { Name ="example 1"}, 1);
             await _slim.WaitAsync(cancellationToken);
             T item;
             lock (_locker)
