@@ -1,4 +1,6 @@
 using PriorityQueue;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace PriorityQueueTests
@@ -81,6 +83,159 @@ namespace PriorityQueueTests
             Assert.False(isExistBeforeDelay);
             Assert.True(isExistAfterDelay);
             Assert.Equal("A", actualValue);
+        }
+
+        [Fact]
+        public async Task ParalelEnqueueAndDequeue_CorrectResult()
+        {
+            //arrange
+            var queue = new InMemoryPriorityQueue<int>();
+            var produsersRang = Enumerable.Range(1, 10);
+            var dequeueTasks = new List<Task>();
+            var actualResultList = new List<int>();
+
+            foreach (var threadId in produsersRang)
+            {
+                dequeueTasks.Add(queue.DequeueAsync());
+            }
+
+            var enqueueTasks = new List<Task>();
+
+            foreach (var threadId in produsersRang)
+            {
+                var task = Task.Run(() =>
+                {
+                    queue.Enqueue(threadId, 1);
+                });
+
+                enqueueTasks.Add(task);
+            }
+
+            //act
+            await Task.WhenAll(enqueueTasks);
+
+            var countAfterEnqueue = queue.Count;
+
+            var hashSet = new HashSet<int>();
+
+
+            await Task.WhenAll(dequeueTasks);
+            var countAfterDequeue = queue.Count;
+            foreach (var dequeueTask in dequeueTasks)
+            {
+                // тут хочу вытащить значения из dequeueTask, но не понимаю как.
+                //await dequeueTask;
+                //actualResultList.Add(dequeueTask.);
+            }
+            //assert
+            Assert.Equal(10, countAfterEnqueue);
+            Assert.Equal(0, countAfterDequeue);
+            Assert.Equal(10, dequeueTasks.Count);
+            Assert.Equal(10, dequeueTasks.Capacity);
+        }
+
+        [Fact]
+        public async Task ParallelEnqueueAndDequeue_CorrectResult_2()
+        {
+            //arrange
+            var queue = new InMemoryPriorityQueue<int>();
+            var totalMessages = 1000;
+            var producerTasks = Enumerable.Range(0, 10);
+            var consumerTasks = Enumerable.Range(1, totalMessages);
+            var tasks = new List<Task>();
+            var dictionary = new ConcurrentDictionary<int, byte>();
+
+            foreach (var consumerId in consumerTasks)
+            {
+                tasks.Add(Task.Run(async () =>
+                {
+                    var message = await queue.DequeueAsync(TimeSpan.FromSeconds(10));
+                    if (!dictionary.TryAdd(message, 1))
+                        throw new DuplicateWaitObjectException();
+                }));
+            }
+
+            foreach (var threadId in producerTasks)
+            {
+                var messagesRange = Enumerable.Range(1, 100);
+
+                foreach (var message in messagesRange)
+                {
+                    var task = Task.Run(() =>
+                    {
+                        queue.Enqueue(threadId * 100 + message, 1);
+                    });
+
+                    tasks.Add(task);
+                }
+            }
+
+            //act
+            try
+            {
+                await Task.WhenAll(tasks);
+            }
+            catch (Exception ex)
+            {
+                var v = ex.Message;
+                throw;
+            }
+
+            //assert
+            Assert.Equal(totalMessages, dictionary.Count);
+            Assert.Equal(0, queue.Count);
+        }
+
+        [Fact]
+        public async Task ParallelEnqueueAndDequeue_CorrectResult_3()
+        {
+            //arrange
+            var queue = new InMemoryPriorityQueue<int>();
+            var totalMessages = 1000;
+            var producerTasks = Enumerable.Range(0, 10);
+            var consumerTasks = Enumerable.Range(1, totalMessages);
+            var tasks = new List<Task>();
+            var dictionary = new ConcurrentDictionary<int, byte>();
+
+            foreach (var consumerId in consumerTasks)
+            {
+                tasks.Add(ConsumeOneAsync(queue, dictionary));
+            }
+
+            foreach (var threadId in producerTasks)
+            {
+                var messagesRange = Enumerable.Range(1, 100);
+
+                var task = Task.Run(() =>
+                {
+                    foreach (var message in messagesRange)
+                    {
+                        queue.Enqueue(threadId * 100 + message, 1);
+                    }
+                });
+
+                tasks.Add(task);
+            }
+
+            //act
+            await Task.WhenAll(tasks);
+
+
+            //assert
+            foreach (var item in consumerTasks)
+            {
+                Assert.True(dictionary.ContainsKey(item));
+            }
+
+            Assert.Equal(totalMessages, dictionary.Count);
+            Assert.Equal(0, queue.Count);
+        }
+
+        private async Task ConsumeOneAsync(InMemoryPriorityQueue<int> queue, ConcurrentDictionary<int, byte> dictionary)
+        {
+            var message = await queue.DequeueAsync(TimeSpan.FromSeconds(30));
+            if (!dictionary.TryAdd(message, 1))
+                throw new InvalidOperationException($"Duplicate message received:{message}");
         }
     }
 }
